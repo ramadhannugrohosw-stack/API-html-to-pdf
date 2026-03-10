@@ -1,6 +1,8 @@
+const path = require('path');
+const fs = require('fs');
 const { generatePdf } = require('../services/pdf.service');
 const { validatePdfRequest } = require('../validators/pdf.validator');
-const { success, fail } = require('../utils/response');
+const { fail } = require('../utils/response');
 
 async function generate(req, res, next) {
   try {
@@ -12,15 +14,17 @@ async function generate(req, res, next) {
 
     const result = await generatePdf(req);
 
-    return success(
-      res,
-      {
-        input_type: result.inputType,
-        file_name: result.outputFileName,
-        file_path: result.outputPath
-      },
-      'PDF berhasil dibuat'
+    if (!fs.existsSync(result.outputPath)) {
+      return fail(res, `File PDF tidak ditemukan: ${result.outputPath}`, 404);
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${path.basename(result.outputFileName)}"`
     );
+
+    return res.sendFile(path.resolve(result.outputPath));
   } catch (err) {
     next(err);
   }
